@@ -15,20 +15,9 @@ defmodule Puzzle do
   defp process_input(input) do
     {:ok,
      String.split(input, "\n")
-     |> Enum.map(fn line -> parse_game(line) end)
-     |> Enum.filter(fn game ->
-       if is_possible(game) do
-         IO.puts(
-           "Game #{inspect(game)} is possible, therefore I count its id #{Map.get(game, "id")}"
-         )
-
-         true
-       else
-         IO.puts("Game #{inspect(game)} is not possible")
-         false
-       end
-     end)
-     |> Enum.reduce(0, fn elem, acc -> String.to_integer(Map.get(elem, "id")) + acc end)}
+     |> Enum.map(&parse_game(&1))
+     |> Enum.map(&find_power(&1))
+     |> Enum.reduce(0, fn elem, acc -> Map.get(elem, "power") + acc end)}
   end
 
   # A game looks like:
@@ -44,9 +33,17 @@ defmodule Puzzle do
       [count, color] = String.split(hand, " ")
       {String.to_integer(count), color}
     end)
-    |> Enum.reduce(%{"id" => id}, fn {count, color}, acc ->
+    |> Enum.reduce(%{}, fn {count, color}, acc ->
       Map.update(acc, color, count, &max(count, &1))
     end)
+  end
+
+  defp find_power(game) do
+    pow =
+      Map.values(game)
+      |> Enum.reduce(1, &(&1 * &2))
+
+    Map.put(game, "power", pow)
   end
 
   @canonical_game %{
@@ -56,8 +53,6 @@ defmodule Puzzle do
   }
 
   defp is_possible(game) do
-    # IO.puts("Comparing game #{inspect(game)} to canonical #{inspect(@canonical_game)}")
-
     Map.keys(@canonical_game)
     |> Enum.reduce_while(true, fn color, _acc ->
       with cubes_in_game <- Map.get(game, color),
